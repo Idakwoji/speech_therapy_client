@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom'
 export const useLogin = ({ email, password, slug }) => {
   return useMutation({
     mutationKey: ['login'],
-    mutationFn: () => login(email, password),
+    mutationFn: async () => login(email, password),
     // onSuccess: () =>
     //   userType === 'admin'
     //     ? navigate(`/admin/thema`)
@@ -30,14 +30,14 @@ export const useLogin = ({ email, password, slug }) => {
 export const useEnable2fa = () => {
   return useMutation({
     mutationKey: ['login'],
-    mutationFn: () => enable2fa(),
+    mutationFn: async () => enable2fa(),
   })
 }
 
 export const useVerify2fa = (otp) => {
   return useMutation({
     mutationKey: ['login'],
-    mutationFn: () => verify2fa(otp),
+    mutationFn: async () => verify2fa(otp),
   })
 }
 

@@ -6,12 +6,12 @@ import path from 'path'
 export default defineConfig({
   entry: {
     app: './src/app.js',
-    polyfill: './src/polyfill.js'
+    polyfill: './src/polyfill.js',
   },
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  }
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 })

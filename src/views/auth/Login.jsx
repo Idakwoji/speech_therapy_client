@@ -6,6 +6,7 @@ import QRCode from 'react-qr-code'
 import { useLogin, useEnable2fa, useVerify2fa } from './api'
 import Loader from '../../components/Loader/index'
 import ErrorMessage from '../../components/ErrorMessage/index'
+import { login } from './fetch'
 
 const Login = () => {
   const { slug } = useParams()
@@ -16,8 +17,8 @@ const Login = () => {
   const [OTP, setOTP] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [QR, setQR] = useState('')
-  const { mutate: login, isLoading, error } = useLogin({ email, password })
-  const { mutate: enable2FA } = useEnable2fa()
+  const loginMutationApi = useLogin({ email, password })
+  const enable2FAMutationApi = useEnable2fa()
   const { mutate: verify2FA } = useVerify2fa(OTP)
 
   const navigate = useNavigate()
@@ -26,12 +27,15 @@ const Login = () => {
     e.preventDefault()
 
     try {
-      const status = await login({ email, password })
-      console.log(status?.data)
-      // handleLoginResponse(result)
-      console.log(
-        `Login as ${slug} with email: ${email} and password: ${password}`,
-      )
+      const result = await loginMutationApi.mutateAsync({
+        email,
+        password,
+        slug,
+      })
+      handleLoginResponse(result)
+      // console.log(
+      //   `Login as ${slug} with email: ${email} and password: ${password}`,
+      // )
     } catch (error) {
       console.log(error)
     }
@@ -75,7 +79,9 @@ const Login = () => {
 
   const handleEnable2FA = async () => {
     try {
-      const { data } = await enable2FA()
+      const { data } = await enable2FAMutationApi.mutateAsync()
+      console.log({ data })
+
       // If 2FA enabled, show QR code
       if (data.status === '2FA_ENABLED') {
         console.log('2FA enabled. QR code URI:', data.totp_uri)
@@ -86,6 +92,9 @@ const Login = () => {
         return (
           <ErrorMessage message="2FA is al ingeschakeld voor dit account" />
         )
+      } else if (data.status === '2FA_NOT_ENABLED') {
+        alert('Error is', data.status)
+        console.log('Error:', data.status)
       } else {
         console.error('Unexpected response:', data)
         return <ErrorMessage message="Er is een onverwachte fout opgetreden" />
@@ -127,7 +136,9 @@ const Login = () => {
     }
   }
 
-  if (isLoading) return <Loader />
+  if (loginMutationApi.isPending) return <Loader />
+
+  console.log(showOTP, QR)
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
@@ -188,14 +199,17 @@ const Login = () => {
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
-        {showQR &&
-          QR &&
-          (<div className="mx-2 flex items-center justify-center">
-            <div className="bg-white p-3">
-              <QRCode value={QR} size={256} />
-              <p>Scan bovenstaande code met uw Google Authenticator</p>
+        {
+          showQR && QR && (
+            <div className="mx-2 flex items-center justify-center">
+              <div className="bg-white p-3">
+                <QRCode value={'Hello asldkfjasdf'} size={256} />
+                <p>Scan bovenstaande code met uw Google Authenticator</p>
+              </div>
             </div>
-          </div>)(setShowOTP(true))}
+          )
+          /* (setShowOTP(true)) */
+        }
         {showOTP && (
           <div>
             <label
