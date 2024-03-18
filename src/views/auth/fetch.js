@@ -14,6 +14,7 @@ export const login = async (username, password) => {
     if (!response.ok) {
       throw new Error(`Failed to log the user in! Status: ${response.status}`)
     }
+
     const result = await response.json()
     return result
   } catch (error) {
@@ -22,21 +23,25 @@ export const login = async (username, password) => {
   }
 }
 
-export const enable2fa = async (id) => {
+export const enable2fa = async (user_id) => {
+  console.log({ user_id })
   try {
     const response = await fetch(`${API_URL}enable_2fa`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      // body: JSON.stringify({ id }),
+      body: JSON.stringify({ user_id: user_id }),
     })
+
+    // console.log({ response })
     if (!response.ok) {
       throw new Error(
         `Failed to enable 2 factor authentication! Status: ${response.status}`,
       )
     }
     const result = await response.json()
+    // console.log({ result })
     return result
   } catch (error) {
     console.error('Error Enabling 2FA:', error)

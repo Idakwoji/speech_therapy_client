@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
@@ -6,19 +6,26 @@ import QRCode from 'react-qr-code'
 import { useLogin, useEnable2fa, useVerify2fa } from './api'
 import Loader from '../../components/Loader/index'
 import ErrorMessage from '../../components/ErrorMessage/index'
-import { login } from './fetch'
+import {
+  useEnableTwoFactorAuthMutation,
+  useLoginMutation,
+} from '../../state/services/auth'
 
 const Login = () => {
+  const [loginMutation, loginApi] = useLoginMutation()
+  const [enableTwoFactorAuthMutation, enableTwoFactorAuthMutationApi] =
+    useEnableTwoFactorAuthMutation()
   const { slug } = useParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [userId, setUserId] = useState()
   const [showPassword, setShowPassword] = useState(false)
   const [showOTP, setShowOTP] = useState(false)
   const [OTP, setOTP] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [QR, setQR] = useState('')
   const loginMutationApi = useLogin({ email, password })
-  const enable2FAMutationApi = useEnable2fa()
+  const enable2FAMutationApi = useEnable2fa({ user_id: '' })
   const { mutate: verify2FA } = useVerify2fa(OTP)
 
   const navigate = useNavigate()
@@ -27,32 +34,30 @@ const Login = () => {
     e.preventDefault()
 
     try {
-      const result = await loginMutationApi.mutateAsync({
-        email,
-        password,
-        slug,
-      })
-      handleLoginResponse(result)
-      // console.log(
-      //   `Login as ${slug} with email: ${email} and password: ${password}`,
-      // )
+      loginMutation({ username: email, password })
     } catch (error) {
       console.log(error)
     }
   }
+
+  useEffect(() => {
+    if (!loginApi.isSuccess || !loginApi.data.user_id) return undefined
+    setUserId(loginApi.data.user_id)
+    handleLoginResponse(loginApi.data)
+  }, [loginApi])
 
   const handleLoginResponse = (result) => {
     switch (result.status) {
       case 'INVALID_USER_TYPE':
         // Handle invalid user type error
         console.error('Invalid user type')
-        return (
-          <ErrorMessage message="Ongeldig gebruikerstype, controleer de inloggegevens en probeer het opnieuw!" />
-        )
+        // return (
+        //   <ErrorMessage message="Ongeldig gebruikerstype, controleer de inloggegevens en probeer het opnieuw!" />
+        // )
         break
       case '2FA_NOT_ENABLED':
         // If 2FA not enabled, call enable2FA
-        handleEnable2FA()
+        handleEnable2FA(result.user_id)
         break
       case '2FA_VERIFY':
         // Show OTP field for verification
@@ -61,25 +66,31 @@ const Login = () => {
       case 'INVALID_CREDENTIALS':
         // Handle invalid credentials error
         console.error('Invalid credentials')
-        return (
-          <ErrorMessage message="Ongeldige inloggegevens, controleer de inloggegevens en probeer het opnieuw!" />
-        )
+        // return (
+        //   <ErrorMessage message="Ongeldige inloggegevens, controleer de inloggegevens en probeer het opnieuw!" />
+        // )
         break
       case 'INVALID_REQUEST_METHOD':
         // Handle invalid request method error
         console.error('Invalid request method')
-        return <ErrorMessage message="Ongeldige aanvraagmethode" />
+        // return <ErrorMessage message="Ongeldige aanvraagmethode" />
         break
       default:
         // Handle unknown status
         console.error('Unknown status:', result.status)
-        return <ErrorMessage message="Er is een onbekende fout opgetreden" />
+      // return <ErrorMessage message="Er is een onbekende fout opgetreden" />
     }
   }
 
-  const handleEnable2FA = async () => {
+  console.log({ enableTwoFactorAuthMutationApi })
+  const handleEnable2FA = async (user_id) => {
     try {
-      const { data } = await enable2FAMutationApi.mutateAsync()
+      const da = await enableTwoFactorAuthMutation({ user_id })
+
+      return undefined
+      const { data } = await enable2FAMutationApi.mutateAsync({
+        user_id: user_id,
+      })
       console.log({ data })
 
       // If 2FA enabled, show QR code
@@ -138,8 +149,7 @@ const Login = () => {
 
   if (loginMutationApi.isPending) return <Loader />
 
-  console.log(showOTP, QR)
-
+  // console.log(showOTP, QR)
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
       <div className="mb-8 flex flex-col gap-4">

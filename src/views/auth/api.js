@@ -27,16 +27,17 @@ export const useLogin = ({ email, password, slug }) => {
   })
 }
 
-export const useEnable2fa = () => {
+export const useEnable2fa = ({ user_id }) => {
+  console.log(user_id)
   return useMutation({
-    mutationKey: ['login'],
-    mutationFn: async () => enable2fa(),
+    mutationKey: ['enable2fa'],
+    mutationFn: async () => enable2fa(user_id),
   })
 }
 
 export const useVerify2fa = (otp) => {
   return useMutation({
-    mutationKey: ['login'],
+    mutationKey: ['verify2fa'],
     mutationFn: async () => verify2fa(otp),
   })
 }

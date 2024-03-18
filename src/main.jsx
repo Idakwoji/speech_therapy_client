@@ -14,6 +14,8 @@ import CreatePage from './views/admin/createPage'
 import ThemePage from './views/admin/ThemePage'
 import Login from './views/auth/Login'
 import { RecoilRoot } from 'recoil'
+import { Provider } from 'react-redux'
+import { store } from './state/store'
 // import BlocksPage from './views/admin/editTheme/blocks/BlocksPage'
 
 const router = createBrowserRouter([
@@ -88,11 +90,11 @@ const queryClient = new QueryClient()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <RecoilRoot>
+    <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         {/* <App /> */}
       </QueryClientProvider>
-    </RecoilRoot>
+    </Provider>
   </React.StrictMode>,
 )
