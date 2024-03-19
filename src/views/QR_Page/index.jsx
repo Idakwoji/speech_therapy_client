@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import QRCode from 'react-qr-code'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Loader from '../../components/Loader'
 import Cookies from 'js-cookie'
+import { useVerifyTwoFactorAuthMutation } from '../../state/services/auth'
+import OtpInput from 'react-otp-input'
 
 const QR_Page = () => {
+  const [verifyTwoFactorAuthMutation, verifyTwoFactorAuthMutationApi] =
+    useVerifyTwoFactorAuthMutation()
+  const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [queryParams, setQueryParams] = useState({
     isNew: undefined,
@@ -40,10 +45,27 @@ const QR_Page = () => {
     fetchLocation()
   }, [location.search])
 
+  useEffect(() => {
+    if (!verifyTwoFactorAuthMutationApi.isSuccess) return undefined
+
+    if (verifyTwoFactorAuthMutationApi.data?.status) {
+      alert('Your are good to go, you have got access')
+      navigate('/')
+    }
+  }, [verifyTwoFactorAuthMutationApi.isSuccess])
+
   if (isLoading) return <Loader />
 
   if (!queryParams.qrCodeUri && !queryParams.user_id)
     return navigate('/', { replace: true })
+
+  const submitHandler = async (e) => {
+    e.preventDefault()
+    verifyTwoFactorAuthMutation({
+      user_id: queryParams.user_id,
+      otp_code: otp,
+    })
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
@@ -75,19 +97,35 @@ const QR_Page = () => {
           </div>
         ) : null}
 
-        <div className="mx-auto mt-[30px] w-full max-w-[280px]">
+        <div className="mx-auto mt-[30px] w-full max-w-[316px]">
           <h1 className="mb-4 text-xl font-medium text-white">OTP</h1>
           <p className="tex-sm mb-10 text-[#8c929f]">
             Voer uw OTP in vanuit de authenticator-app om door te gaan
           </p>
-          <input
-            type="text"
-            placeholder="OTP-code van de Authenticator-app"
-            className="h-12 w-full rounded-md bg-[#1F2937] px-3 text-white outline-none"
-          />
-          <button className="mt-6 h-12 w-full items-center justify-center rounded-md bg-[#1F2937] px-3 font-medium uppercase text-white duration-150 hover:bg-[#1a2431] active:scale-95">
-            Submit
-          </button>
+          <form onSubmit={submitHandler}>
+            <OtpInput
+              inputType="number"
+              value={otp}
+              onChange={setOtp}
+              numInputs={6}
+              renderSeparator={<span className="text-[#1F2937]">-</span>}
+              renderInput={(props) => (
+                <input
+                  {...props}
+                  style={{
+                    width: '48px',
+                  }}
+                  className="no-arrow-input h-12 w-12 rounded-md bg-[#1F2937] px-3 text-white outline-none"
+                />
+              )}
+            />
+            <button
+              type="submit"
+              className="mt-6 h-12 w-full items-center justify-center rounded-md bg-[#1F2937] px-3 font-medium uppercase text-white duration-150 hover:bg-[#1a2431] active:scale-95"
+            >
+              Submit
+            </button>
+          </form>
         </div>
       </div>
     </div>

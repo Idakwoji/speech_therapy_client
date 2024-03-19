@@ -19,7 +19,20 @@ export const auth = apiSlice.injectEndpoints({
         body: JSON.stringify({ user_id }),
       }),
     }),
+
+    //
+    verifyTwoFactorAuth: builder.mutation({
+      query: ({ user_id, otp_code }) => ({
+        url: '/verify_2fa',
+        method: 'post',
+        body: JSON.stringify({ user_id, otp_code }),
+      }),
+    }),
   }),
 })
 
-export const { useLoginMutation, useEnableTwoFactorAuthMutation } = auth
+export const {
+  useLoginMutation,
+  useEnableTwoFactorAuthMutation,
+  useVerifyTwoFactorAuthMutation,
+} = auth
