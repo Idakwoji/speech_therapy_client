@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
@@ -6,18 +6,27 @@ import QRCode from 'react-qr-code'
 import { useLogin, useEnable2fa, useVerify2fa } from './api'
 import Loader from '../../components/Loader/index'
 import ErrorMessage from '../../components/ErrorMessage/index'
+import {
+  useEnableTwoFactorAuthMutation,
+  useLoginMutation,
+} from '../../state/services/auth'
+import Cookies from 'js-cookie'
 
 const Login = () => {
+  const [loginMutation, loginApi] = useLoginMutation()
+  const [enableTwoFactorAuthMutation, enableTwoFactorAuthMutationApi] =
+    useEnableTwoFactorAuthMutation()
   const { slug } = useParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [userId, setUserId] = useState()
   const [showPassword, setShowPassword] = useState(false)
   const [showOTP, setShowOTP] = useState(false)
   const [OTP, setOTP] = useState('')
   const [showQR, setShowQR] = useState(false)
   const [QR, setQR] = useState('')
-  const { mutate: login, isLoading, error } = useLogin({ email, password })
-  const { mutate: enable2FA } = useEnable2fa()
+  const loginMutationApi = useLogin({ email, password })
+  const enable2FAMutationApi = useEnable2fa({ user_id: '' })
   const { mutate: verify2FA } = useVerify2fa(OTP)
 
   const navigate = useNavigate()
@@ -26,12 +35,7 @@ const Login = () => {
     e.preventDefault()
 
     try {
-      const status = await login({ email, password })
-      console.log(status?.data)
-      // handleLoginResponse(result)
-      console.log(
-        `Login as ${slug} with email: ${email} and password: ${password}`,
-      )
+      loginMutation({ username: email, password })
     } catch (error) {
       console.log(error)
     }
@@ -39,65 +43,39 @@ const Login = () => {
 
   const handleLoginResponse = (result) => {
     switch (result.status) {
-      case 'INVALID_USER_TYPE':
-        // Handle invalid user type error
-        console.error('Invalid user type')
-        return (
-          <ErrorMessage message="Ongeldig gebruikerstype, controleer de inloggegevens en probeer het opnieuw!" />
-        )
-        break
       case '2FA_NOT_ENABLED':
         // If 2FA not enabled, call enable2FA
-        handleEnable2FA()
+        enableTwoFactorAuthMutation({ user_id: result.user_id })
         break
       case '2FA_VERIFY':
-        // Show OTP field for verification
-        setShowOTP(true)
-        break
-      case 'INVALID_CREDENTIALS':
-        // Handle invalid credentials error
-        console.error('Invalid credentials')
-        return (
-          <ErrorMessage message="Ongeldige inloggegevens, controleer de inloggegevens en probeer het opnieuw!" />
-        )
-        break
-      case 'INVALID_REQUEST_METHOD':
-        // Handle invalid request method error
-        console.error('Invalid request method')
-        return <ErrorMessage message="Ongeldige aanvraagmethode" />
+        const oneHourInMs = 60 * 60 * 1000 // 1 hour in milliseconds
+        const expiryTime = new Date(Date.now() + oneHourInMs) // Current time + 1 hour
+
+        Cookies.set('user_id', result.user_id, { expires: expiryTime })
+        navigate(`/qr-code?isNew=${false}&cameFrom=${slug}`)
         break
       default:
         // Handle unknown status
         console.error('Unknown status:', result.status)
-        return <ErrorMessage message="Er is een onbekende fout opgetreden" />
     }
   }
 
-  const handleEnable2FA = async () => {
-    try {
-      const { data } = await enable2FA()
-      // If 2FA enabled, show QR code
-      if (data.status === '2FA_ENABLED') {
-        console.log('2FA enabled. QR code URI:', data.totp_uri)
-        setShowQR(true)
-        setQR(data.totp_uri)
-      } else if (data.status === '2FA_ALREADY_ENABLED') {
-        console.warn('2FA already enabled')
-        return (
-          <ErrorMessage message="2FA is al ingeschakeld voor dit account" />
-        )
-      } else {
-        console.error('Unexpected response:', data)
-        return <ErrorMessage message="Er is een onverwachte fout opgetreden" />
-      }
-    } catch (error) {
-      // Handle enable 2FA error
-      console.error('Enable 2FA error:', error)
-      return (
-        <ErrorMessage message="Er is een fout opgetreden bij het inschakelen van 2FA" />
-      )
-    }
-  }
+  useEffect(() => {
+    if (!enableTwoFactorAuthMutationApi.isSuccess) return undefined
+
+    const oneHourInMs = 60 * 60 * 1000 // 1 hour in milliseconds
+    const expiryTime = new Date(Date.now() + oneHourInMs) // Current time + 1 hour
+    Cookies.set('qrCodeUri', enableTwoFactorAuthMutationApi.data.totp_uri, {
+      expires: expiryTime,
+    })
+    navigate(`/qr-code?isNew=${true}&cameFrom=${slug}`)
+  }, [enableTwoFactorAuthMutationApi])
+
+  useEffect(() => {
+    if (!loginApi.isSuccess || !loginApi.data.user_id) return undefined
+    setUserId(loginApi.data.user_id)
+    handleLoginResponse(loginApi.data)
+  }, [loginApi])
 
   const handleVerify2FA = async (e) => {
     e.preventDefault()
@@ -127,8 +105,9 @@ const Login = () => {
     }
   }
 
-  if (isLoading) return <Loader />
+  if (loginMutationApi.isPending) return <Loader />
 
+  // console.log(showOTP, QR)
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
       <div className="mb-8 flex flex-col gap-4">
@@ -188,48 +167,13 @@ const Login = () => {
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </button>
         </div>
-        {showQR &&
-          QR &&
-          (<div className="mx-2 flex items-center justify-center">
-            <div className="bg-white p-3">
-              <QRCode value={QR} size={256} />
-              <p>Scan bovenstaande code met uw Google Authenticator</p>
-            </div>
-          </div>)(setShowOTP(true))}
-        {showOTP && (
-          <div>
-            <label
-              htmlFor="otp"
-              className="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
-            >
-              Otp
-            </label>
-            <input
-              type="text"
-              id="otp"
-              name="otp"
-              value={OTP}
-              onChange={(e) => setOTP(e.target.value)}
-              placeholder="OTP-code van de Authenticator-app"
-              required
-            />
-            <button
-              type="submit"
-              className={`w-full rounded-md py-2 text-center font-semibold ${slug === 'admin' ? 'bg-purple-800' : slug === 'therapist' ? 'bg-orange-600' : slug === 'client' ? 'bg-black bg-gradient-to-br from-blue-300 to-blue-700 shadow shadow-blue-500/50 duration-500 hover:scale-110' : 'bg-yellow-300'} text-white`}
-              onClick={handleVerify2FA}
-            >
-              Sign in
-            </button>
-          </div>
-        )}
-        {!showOTP && (
-          <button
-            type="submit"
-            className={`w-full rounded-md py-2 text-center font-semibold ${slug === 'admin' ? 'bg-purple-800' : slug === 'therapist' ? 'bg-orange-600' : slug === 'client' ? 'bg-black bg-gradient-to-br from-blue-300 to-blue-700 shadow shadow-blue-500/50 duration-500 hover:scale-110' : 'bg-yellow-300'} text-white`}
-          >
-            Sign in
-          </button>
-        )}
+
+        <button
+          type="submit"
+          className={`w-full rounded-md py-2 text-center font-semibold ${slug === 'admin' ? 'bg-purple-800' : slug === 'therapist' ? 'bg-orange-600' : slug === 'client' ? 'bg-black bg-gradient-to-br from-blue-300 to-blue-700 shadow shadow-blue-500/50 duration-500 hover:scale-110' : 'bg-yellow-300'} text-white`}
+        >
+          Sign in
+        </button>
 
         <div className="flex items-center justify-between">
           <a
