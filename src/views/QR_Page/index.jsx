@@ -1,0 +1,97 @@
+import React, { useEffect, useState } from 'react'
+import QRCode from 'react-qr-code'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import Loader from '../../components/Loader'
+import Cookies from 'js-cookie'
+
+const QR_Page = () => {
+  const [isLoading, setIsLoading] = useState(true)
+  const [queryParams, setQueryParams] = useState({
+    isNew: undefined,
+    cameFrom: '',
+    qrCodeUri: '',
+    user_id: undefined,
+  })
+
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchLocation = async () => {
+      // Simulate an asynchronous operation
+      // You can replace this with actual fetching logic if needed
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      const searchParams = new URLSearchParams(location.search)
+      const params = Object.fromEntries(searchParams.entries())
+      const qrCodeUri = Cookies.get('qrCodeUri')
+      const user_id = Cookies.get('user_id')
+
+      setQueryParams(params)
+      setIsLoading(false)
+
+      setQueryParams((prevState) => ({
+        ...prevState,
+        qrCodeUri: qrCodeUri,
+        user_id: user_id,
+      }))
+    }
+
+    fetchLocation()
+  }, [location.search])
+
+  if (isLoading) return <Loader />
+
+  if (!queryParams.qrCodeUri && !queryParams.user_id)
+    return navigate('/', { replace: true })
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
+      <div
+        style={{
+          maxWidth:
+            queryParams.isNew === 'true' && queryParams.qrCodeUri
+              ? '896px'
+              : '400px',
+        }}
+        className="mx-2 flex w-full items-center justify-center rounded-md bg-[#283240] py-6"
+      >
+        {queryParams.isNew === 'true' && queryParams.qrCodeUri ? (
+          <div className="mx-auto w-full max-w-[400px] rounded-md bg-[#1F2937] px-3 pb-3 text-center text-white">
+            <h1 className="mb-4 mt-8 text-xl font-medium">Scan QR code</h1>
+            <p className="tex-sm mb-10 text-[#8c929f]">
+              Plaats de QR-code in het frame om te scannen, vermijd schudden om
+              te krijgen resultaat snel
+            </p>
+
+            <QRCode
+              className="mx-auto h-[256px] w-[256px]"
+              value={queryParams.qrCodeUri ?? ''}
+              size={256}
+            />
+            <p className="mt-[20px] text-center text-sm text-[#8c929f]">
+              Scan bovenstaande code met uw Google Authenticator
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mx-auto mt-[30px] w-full max-w-[280px]">
+          <h1 className="mb-4 text-xl font-medium text-white">OTP</h1>
+          <p className="tex-sm mb-10 text-[#8c929f]">
+            Voer uw OTP in vanuit de authenticator-app om door te gaan
+          </p>
+          <input
+            type="text"
+            placeholder="OTP-code van de Authenticator-app"
+            className="h-12 w-full rounded-md bg-[#1F2937] px-3 text-white outline-none"
+          />
+          <button className="mt-6 h-12 w-full items-center justify-center rounded-md bg-[#1F2937] px-3 font-medium uppercase text-white duration-150 hover:bg-[#1a2431] active:scale-95">
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default QR_Page

@@ -16,6 +16,7 @@ import Login from './views/auth/Login'
 import { RecoilRoot } from 'recoil'
 import { Provider } from 'react-redux'
 import { store } from './state/store'
+import QR_Page from './views/QR_Page'
 // import BlocksPage from './views/admin/editTheme/blocks/BlocksPage'
 
 const router = createBrowserRouter([
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
   //   path: 'signup/:slug',
   //   element: <Signup />,
   // },
+  {
+    path: 'qr-code/',
+    element: <QR_Page />,
+  },
   {
     path: 'admin',
     element: <Admin />,
