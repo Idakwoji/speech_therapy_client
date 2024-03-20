@@ -4,10 +4,10 @@ export const auth = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation({
       //
-      query: ({ username, password }) => ({
+      query: ({ username, password, account_type }) => ({
         url: '/login',
         method: 'post',
-        body: JSON.stringify({ username: username, password }),
+        body: JSON.stringify({ username: username, password, account_type }),
       }),
     }),
 

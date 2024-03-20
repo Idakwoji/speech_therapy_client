@@ -48,15 +48,21 @@ const QR_Page = () => {
   useEffect(() => {
     if (!verifyTwoFactorAuthMutationApi.isSuccess) return undefined
 
+    if (verifyTwoFactorAuthMutationApi.data?.status !== '2FA_VERIFIED')
+      return alert('Invalid OTP')
+
+    const successRedirectPath = queryParams.cameFrom
     if (verifyTwoFactorAuthMutationApi.data?.status) {
-      alert('Your are good to go, you have got access')
-      navigate('/')
+      navigate(`/${successRedirectPath}`)
     }
   }, [verifyTwoFactorAuthMutationApi.isSuccess])
 
   if (isLoading) return <Loader />
 
-  if (!queryParams.qrCodeUri && !queryParams.user_id)
+  if (queryParams.isNew === 'true' && !queryParams.qrCodeUri)
+    return navigate('/', { replace: true })
+
+  if (!queryParams.user_id || !queryParams.cameFrom)
     return navigate('/', { replace: true })
 
   const submitHandler = async (e) => {
@@ -121,7 +127,7 @@ const QR_Page = () => {
             />
             <button
               type="submit"
-              className="mt-6 h-12 w-full items-center justify-center rounded-md bg-[#1F2937] px-3 font-medium uppercase text-white duration-150 hover:bg-[#1a2431] active:scale-95"
+              className={`${queryParams.cameFrom === 'admin' ? 'bg-purple-800' : queryParams.cameFrom === 'therapist' ? 'bg-orange-600' : queryParams.cameFrom === 'client' ? 'bg-black bg-gradient-to-br from-blue-300 to-blue-700 shadow shadow-blue-500/50 duration-500 hover:scale-110' : 'bg-yellow-300'} mt-6 h-12 w-full items-center justify-center rounded-md px-3 font-medium uppercase text-white duration-150 hover:bg-opacity-80 active:scale-95`}
             >
               Submit
             </button>

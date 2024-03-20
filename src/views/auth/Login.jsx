@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-import QRCode from 'react-qr-code'
-import { useLogin, useEnable2fa, useVerify2fa } from './api'
 import Loader from '../../components/Loader/index'
-import ErrorMessage from '../../components/ErrorMessage/index'
 import {
   useEnableTwoFactorAuthMutation,
   useLoginMutation,
 } from '../../state/services/auth'
 import Cookies from 'js-cookie'
+import { motion, AnimatePresence } from 'framer-motion'
+import { MdError } from 'react-icons/md'
 
 const Login = () => {
   const [loginMutation, loginApi] = useLoginMutation()
@@ -19,23 +17,16 @@ const Login = () => {
   const { slug } = useParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [userId, setUserId] = useState()
   const [showPassword, setShowPassword] = useState(false)
-  const [showOTP, setShowOTP] = useState(false)
-  const [OTP, setOTP] = useState('')
-  const [showQR, setShowQR] = useState(false)
-  const [QR, setQR] = useState('')
-  const loginMutationApi = useLogin({ email, password })
-  const enable2FAMutationApi = useEnable2fa({ user_id: '' })
-  const { mutate: verify2FA } = useVerify2fa(OTP)
+  const [error, setError] = useState('')
 
   const navigate = useNavigate()
 
   const handleLogin = async (e) => {
     e.preventDefault()
-
+    if (error) setError('')
     try {
-      loginMutation({ username: email, password })
+      loginMutation({ username: email, password, account_type: slug })
     } catch (error) {
       console.log(error)
     }
@@ -72,45 +63,38 @@ const Login = () => {
   }, [enableTwoFactorAuthMutationApi])
 
   useEffect(() => {
-    if (!loginApi.isSuccess || !loginApi.data.user_id) return undefined
-    setUserId(loginApi.data.user_id)
+    if (!loginApi.isSuccess) return undefined
+
+    const isErrorAdmin =
+      slug === 'admin' && loginApi.data?.status === 'INVALID_USER_TYPE_ADMIN'
+    const isErrorClient =
+      slug === 'client' && loginApi.data?.status === 'INVALID_USER_TYPE_CLIENT'
+    const isErrorTherapist =
+      slug === 'therapist' &&
+      loginApi.data?.status === 'INVALID_USER_TYPE_THERAPIST'
+
+    if (isErrorAdmin)
+      return setError('Please enter a valid admin account details')
+    else if (isErrorClient)
+      return setError('Please enter a valid client account details')
+    else if (isErrorTherapist)
+      return setError('Please enter a valid therapist account details')
+
+    if (!loginApi.data.user_id) return undefined
     handleLoginResponse(loginApi.data)
   }, [loginApi])
 
-  const handleVerify2FA = async (e) => {
-    e.preventDefault()
-    try {
-      const { data } = await verify2FA()
-      // Handle verify 2FA response
-      if (data.status === '2FA_VERIFIED') {
-        console.log('2FA verified. Proceed to dashboard.')
-        slug === 'admin'
-          ? navigate('/admin/thema')
-          : slug === 'therapist'
-            ? navigate('/therapist/')
-            : navigate('/client/')
-      } else if (data.status === 'INVALID_2FA_CODE') {
-        console.error('Invalid OTP code')
-        return <ErrorMessage message="Ongeldige OTP-code" />
-      } else {
-        console.error('Unexpected response:', data)
-        return <ErrorMessage message="Er is een onverwachte fout opgetreden" />
-      }
-    } catch (error) {
-      // Handle verify 2FA error
-      console.error('Verify 2FA error:', error)
-      return (
-        <ErrorMessage message="Er is een fout opgetreden bij het verifiëren van de 2FA-code" />
-      )
+  useEffect(() => {
+    if (slug && slug !== 'client' && slug !== 'therapist' && slug !== 'admin') {
+      navigate('/', { replace: true })
     }
-  }
+  }, [slug, navigate])
 
-  if (loginMutationApi.isPending) return <Loader />
+  if (loginApi.isLoading) return <Loader />
 
-  // console.log(showOTP, QR)
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#1F2937]">
-      <div className="mb-8 flex flex-col gap-4">
+      <div className="relative mb-8 flex flex-col gap-4">
         <h1 className="text-center text-4xl font-extrabold text-white">
           {slug === 'admin' && `Welkom, Beheerder`}
           {slug === 'therapist' && `Therapeuten Inloggen`}
@@ -124,6 +108,20 @@ const Login = () => {
         className="border-1 h-1/2 w-1/2 space-y-4 rounded-3xl border border-white px-10 py-10 md:space-y-6"
         onSubmit={handleLogin}
       >
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              className="flex w-full items-center space-x-2 rounded-md bg-red-500 px-3 py-2 text-sm text-white"
+              animate={{ opacity: 1, y: -10 }}
+              initial={{ opacity: 0, y: 5 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <MdError />
+              <p>{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div>
           <label
             htmlFor="email"
