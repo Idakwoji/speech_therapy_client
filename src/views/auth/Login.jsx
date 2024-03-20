@@ -84,11 +84,11 @@ const Login = () => {
     handleLoginResponse(loginApi.data)
   }, [loginApi])
 
-  useEffect(() => {
-    if (slug && slug !== 'client' && slug !== 'therapist' && slug !== 'admin') {
-      navigate('/', { replace: true })
-    }
-  }, [slug, navigate])
+  // useEffect(() => {
+  //   if (slug && slug !== 'client' && slug !== 'therapist' && slug !== 'admin') {
+  //     navigate('/', { replace: true })
+  //   }
+  // }, [slug, navigate])
 
   if (loginApi.isLoading) return <Loader />
 
